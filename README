@@ -1,0 +1,83 @@
+Socket6bed4 README
+==================
+
+Socket6bed4 is a Java package that introduces an IPv6 tunnel as a socket subclass.
+There is no need to configure anything, just adapt your datagram factory to the
+new tunnel and you will be able to use IPv6.
+
+
+Purpose
+-------
+
+Java is used in many places, including some that will remain IPv4-only for years
+to come.  The 6bed4 tunnel is a zero-config tunnel that eliminates dependency on
+your ISP so you can assume that IPv6 is always available.  Or better even, you
+can distribute Java software that is IPv6-only by using 6bed4 as a fallback for
+users that don't have native IPv6 yet.
+
+
+About 6bed4
+-----------
+
+The design of 6bed4 is intended to support zero-config operation.  You are welcome
+to setup your private 6bed4 server though; it will still be able to communicate
+with the rest of the IPv6 world, native as well as 6bed4.
+
+The design of 6bed4 also explicitly supports peer-to-peer communication.  It will
+attempt to setup direct links between clients, which are therefore referred to as
+peers instead of clients.  The tunnel server is a fallback service, and will only
+be used in practice if a symmetric NAT is used anywhere between the peers.  This
+means that 6bed4 is suitable for realtime media streaming between directly
+connected peers.  The disadvantages of IPv4 are not transferred to IPv6 through
+this tunnel mechanism!
+
+Until 6bed4 is a formal IETF standard, something that we are indeed working
+towards, there is a serious chance that the addresses used will change in the
+future.  This means that you should keep an eye on such changes and keep the
+software using 6bed4 up to date.  To help you with that, announcements of
+such an infrastructural nature are sent to an extremely low-traffic list,
+
+https://lists.sourceforge.net/lists/listinfo/tun6bed4-infra
+
+More information about the 6bed4 tunnel is concentrated at
+
+http://devel.0cpm.org/6bed4
+
+Specifically for this module, you will find information on
+
+http://devel.0cpm.org/6bed4/java-socket6bed4
+
+
+Using Socket6bed4 on a peer or client
+-------------------------------------
+
+We prefer to speak of 6bed4 endpoints as peers, rather than clients.  This is to
+emphasise that they are normally connected to each other, instead of to an
+intermediate server.
+
+Peer use of 6bed4 is straightforward.  You should adapt the code that generates
+your DatagramSocket to create an instance of nl.openfortress.DatagramSocket6bed4
+instead.  That's all.  If you are already using a factory, you have to do this in
+one place only.
+
+If you have access to a native IPv6 address, you probably want to prefer using
+that.  We will not enforce that however -- as we can imagine that you would want
+to run native IPv6 and 6bed4 in parallel, to approach other 6bed4 peers in
+parallel with yours.
+
+
+Using Socket6bed4 on a server
+-----------------------------
+
+Every run of Java will normally create a different IPv6 address.  This address
+contains the external IPv4 address and UDP port for use with the server.  These
+will change every restart of the Socket6bed4 stack, so a server-side address
+would not be fixed.  This may present a problem; let us know if this is important
+for you.
+
+
+Feedback
+--------
+
+We would like to hear what you use Socket6bed4 for.
+
