@@ -46,9 +46,9 @@ extends DatagramSocket {
 	public ServerNode (InetSocketAddress isa)
 	throws SocketException {
 		super ();
+		tunserver = isa;
 		maintainer = new Maintainer (this);
 		worker = new Worker (this);
-		tunserver = isa;
 		udp_clients = new BlockingQueue [65536];
 	}
 
@@ -66,9 +66,9 @@ extends DatagramSocket {
 	public ServerNode (InetSocketAddress isa, int port)
 	throws SocketException {
 		super (port);
+		tunserver = isa;
 		maintainer = new Maintainer (this);
 		worker = new Worker (this);
-		tunserver = isa;
 		udp_clients = new BlockingQueue [65536];
 	}
 
@@ -646,6 +646,7 @@ extends DatagramSocket {
 		
 		public Worker (ServerNode owner) {
 			this.uplink = owner;
+			setDaemon (true);
 		}
 		
 	}
@@ -761,6 +762,14 @@ extends DatagramSocket {
 		 */
 		public Maintainer (DatagramSocket uplink) {
 			this.uplink = uplink;
+			try {
+				byte payload[] = { };
+				keepalive_packet = new DatagramPacket (payload, 0, tunserver);
+			} catch (SocketException se) {
+				System.err.println (se);
+				keepalive_packet = null;
+			}
+			setDaemon (true);
 		}
 	}
 	

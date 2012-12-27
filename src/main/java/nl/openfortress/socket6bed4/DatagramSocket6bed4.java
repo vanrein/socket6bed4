@@ -94,6 +94,11 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 	throws SocketException {
 		//
 		// Verify if binding request is properly formed
+		if (port == 0) {
+			// Although I did not see it specified, this C-ism is apparently used a lot
+			bind ((InetSocketAddress) null);
+			return;
+		}
 		if ((port <= 0) || (port > 65535)) {
 			throw new SocketException ("Binding is only possible to ports from 1 to 65535");
 		}

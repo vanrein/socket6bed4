@@ -2,9 +2,9 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>socket6bed4</groupId>
+  <groupId>nl.openfortress.socket6bed4</groupId>
   <artifactId>nl.openfortress.socket6bed4</artifactId>
-  <version>0.0</version>
+  <version>0.2.2</version>
   <packaging>jar</packaging>
 
   <properties>

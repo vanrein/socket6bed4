@@ -467,6 +467,7 @@ class NeighborCache {
 			cache = owner;
 			whoami = mystate;
 			queue = new ArrayDeque <Neighbor> ();
+			setDaemon (true);
 			this.start ();
 		}
 		
