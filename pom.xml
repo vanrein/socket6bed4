@@ -4,8 +4,49 @@
 
   <groupId>nl.openfortress.socket6bed4</groupId>
   <artifactId>nl.openfortress.socket6bed4</artifactId>
-  <version>0.2.2</version>
+  <name>Socket-6bed4</name>
+  2version>0.2.3-SNAPSHOT</version>
   <packaging>jar</packaging>
+  <description>Socket6bed4 implements a class DatagramSocket6bed4 that makes IPv6 available on IPv4-only hosts, from within Java.  Direct communication between peers is supported; the only times that 6bed4 peers communicate through a tunnel server is if a NAT or firewall on the path makes it impossible -- which is not the case for most users.</description>
+  <url>http://devel.0cpm.org/6bed4/java-socket6bed4/</url>
+  <licenses>
+    <license>
+      <name>GNU Public License</name>
+      <url>http://www.gnu.org/copyleft/gpl.html</url>
+    </license>
+    <license>
+      <name>BSD-style license, 2 clauses</name>
+      <comments>Copyright (c) 2012, OpenFortress
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</comments>
+    </license>
+  </licenses>
+
+  <scm>
+    <connection>scm:git:git://github.com/vanrein/socket6bed4.git</connection>
+    <developerConnection>scm:git:https://vanrein@github.com/vanrein/socket6bed4.git</developerConnection>
+    <url>https://github.com/vanrein/socket6bed4</url>
+  </scm>
+
+  <developers>
+    <developer>
+      <name>Rick van Rein</name>
+      <url>http://openfortress.nl/</url>
+      <organization>OpenFortress</organization>
+      <roles><role>Tunnel Architect</role><role>Tunnel Specifier</role><role>Developer</role></roles>
+    </developer>
+  </developers>
+
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>7</version>
+  </parent>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -17,6 +58,7 @@
 
   <build>
     <plugins>
+
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
         <version>2.2.1</version>
@@ -57,7 +99,33 @@
         </configuration>
       </plugin>
 
+    <plugin>
+     <inherited>true</inherited>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <inherited>true</inherited>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+
     </plugins>
+
   </build>
 
   <reporting>
