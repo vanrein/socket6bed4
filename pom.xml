@@ -1,11 +1,10 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>nl.openfortress.socket6bed4</groupId>
   <artifactId>nl.openfortress.socket6bed4</artifactId>
   <name>Socket-6bed4</name>
-  <version>0.2.3-SNAPSHOT</version>
+  <version>0.2.3</version>
   <packaging>jar</packaging>
   <description>Socket6bed4 implements a class DatagramSocket6bed4 that makes IPv6 available on IPv4-only hosts, from within Java.  Direct communication between peers is supported; the only times that 6bed4 peers communicate through a tunnel server is if a NAT or firewall on the path makes it impossible -- which is not the case for most users.</description>
   <url>http://devel.0cpm.org/6bed4/java-socket6bed4/</url>
