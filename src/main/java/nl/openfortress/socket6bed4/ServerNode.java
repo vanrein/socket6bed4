@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
  * may be compared to having a per-network neighbor cache as part of
  * an operating system.  Lookups may lead to more direct routes than
  * would otherwise be possible.
- * 
+ *
  * TODO: Hook up handle_4to6/handle_6to4 methods with receive/send.
  * TODO: Handle IPv6 addr chg by throwing an IOException subclass.
  * TODO: Establish NeighborCache with lladdr_6bed4, somehow.
@@ -72,7 +72,7 @@ extends DatagramSocket {
 		udp_clients = new BlockingQueue [65536];
 	}
 
-	
+
 	/** Teardown the connection to a 6bed4 tunnel server.
 	 */
 	public void stop () {
@@ -135,7 +135,7 @@ extends DatagramSocket {
 	 * wants to allocate ports for UDP/TCP through either a
 	 * Socket6bed4 or a DatagramSocket6bed4.  This routine will
 	 * block until an address has been obtained.
-	 * 
+	 *
 	 * To allocate recipients on the shared address, use
 	 * registerDatagramClient(port) and, hopefully one day,
 	 * registerStreamClient(port).  Raw access is not possible
@@ -170,11 +170,11 @@ extends DatagramSocket {
 		//TODO// Register the address in the ConnectionPool so getServerNode() will work!
 		return null;
 	}
-	
+
 	/** Pull an element from the BlockingQueue for the given
 	 * Datagram port.  Block if no input is available.
 	 * The timeout value is in milli-seconds, zero
-	 * representing infinity (just as with setSoTimeout). 
+	 * representing infinity (just as with setSoTimeout).
 	 */
 	public byte[] receive_datagram (int port, int timeout)
 	throws SocketException {
@@ -250,10 +250,6 @@ extends DatagramSocket {
 				// Receiver address is not 0xfe80::/64
 				return;
 			}
-			if ((pkt [Utils.OFS_IP6_DST + 11] != (byte) 0xff) || (pkt [Utils.OFS_IP6_DST + 12] != (byte) 0xfe)) {
-				// No MAC-based destination address ending in ....:..ff:fe..:....
-				return;
-			}
 			//TODO// Check if offered address looks like a multicast-address (MAC byte 0 is odd)
 			//TODO// Check Secure ND on incoming Router Advertisement?
 			//
@@ -283,7 +279,7 @@ extends DatagramSocket {
 			if (destprefix_ofs > 0) {
 				for (int i=0; i<8; i++) {
 					local_address [0 + i] = pkt [destprefix_ofs + i];
-					local_address [8 + i] = pkt [Utils.OFS_IP6_DST + 8 + i]; 
+					local_address [8 + i] = pkt [Utils.OFS_IP6_DST + 8 + i];
 				}
 				sharedAddress = (Inet6Address) InetAddress.getByAddress (local_address);
 				//TODO// syslog (LOG_INFO, "%s: Assigning address %s to tunnel\n", program, v6prefix);
@@ -396,14 +392,14 @@ extends DatagramSocket {
 	 * The only thing needed to make that work is to report success
 	 * back to the Neighbor Cache, in cases when TCP ACK comes back in
 	 * directly from the remote peer.
-	 * 
+	 *
 	 * Note that nothing is stopping an ACK packet that is meaningful
 	 * to us from also being a SYN packet that is meaningful to the
 	 * remote peer.  We will simply do our thing and forward any ACK
 	 * to the most direct route we can imagine -- which may well be
 	 * the sender, _especially_ since we opened our 6bed4 port to the
 	 * remote peer when sending our playful initial TCP packet.
-	 * 
+	 *
 	 * Observing the traffic on the network, this may well look like
 	 * magic!  All you see is plain TCP traffic crossing over directly
 	 * if it is possible --and bouncing one or two packets through the
@@ -442,7 +438,7 @@ extends DatagramSocket {
 		//TODO// Select whether this is UDP/TCP/??? for the shared address, or raw for unique addresses!
 		queue.offer (pkt);
 	}
-	
+
 	/** Handle a 6bed4 packet that is being stripped and passed on as
 	 * an IPv6 packet.  Returns true if the packet is suitable to be
 	 * relayed as IPv6.
@@ -494,7 +490,7 @@ extends DatagramSocket {
 	 * The only concern for this is where to send it to -- should it
 	 * be sent to the tunnel server, or directly to the peer?  The
 	 * Neighbor Cache is consulted for advise.
-	 * 
+	 *
 	 * A special flag exists to modify the behaviour of the response
 	 * to this inquiry.  This flag is used to signal that a first
 	 * packet might be tried directly, which should be harmless if
@@ -518,7 +514,7 @@ extends DatagramSocket {
 			target = tunserver;
 		}
 	}
-	
+
 	public void handle_6to4_nd (byte pkt [], int pktlen)
 	throws IOException {
 		throw new RuntimeException ("You should not be trying to send ND over the 6bed4 interface");
@@ -569,7 +565,7 @@ extends DatagramSocket {
 		//
 		// Neighbor Advertisement is a response to a peer, and should be relayed
 		case Utils.ND_NEIGHBOR_ADVERT:
-			//TODO// Possibly arrange the peer's receiving address 
+			//TODO// Possibly arrange the peer's receiving address
 			handle_6to4_plain_unicast (pkt, pktlen);
 			return;
 		// Route Redirect messages are not supported in 6bed4 draft v01
@@ -606,7 +602,7 @@ extends DatagramSocket {
 		}
 	}
 
-	
+
 	/** The Worker inner class ensures that incoming traffic, and that
 	 * includes 6bed4 tunnel management traffic, is processed as soon
 	 * as it arrives.  This means that applications need not actively
@@ -616,12 +612,12 @@ extends DatagramSocket {
 	 * connected to the same ServerNode, and possibly each applying
 	 * their own idea of a socket timeout or other queueing disciplines.
 	 * The expense (there always seems to be one) is having to queue
-	 * received data between the ServerNode and the 6bed4 socket.  
+	 * received data between the ServerNode and the 6bed4 socket.
 	 */
 	private class Worker extends Thread {
-		
+
 		protected ServerNode uplink;
-		
+
 		/** The thread logic for the Worker inner class comes down
 		 * to reading input from the IPv4/UDP socket, seeing if it
 		 * needs local handling as a 6bed4 management packet, and
@@ -629,7 +625,7 @@ extends DatagramSocket {
 		 * that is read when the user of the DatagramSocket6bed4
 		 * wants to grab its input.  Note how this reflects the way
 		 * that native UDP ports operate -- packets wait until they
-		 * are picked up. 
+		 * are picked up.
 		 */
 		public void run () {
 			DatagramPacket dgram4 = null;
@@ -643,12 +639,12 @@ extends DatagramSocket {
 				}
 			}
 		}
-		
+
 		public Worker (ServerNode owner) {
 			this.uplink = owner;
 			setDaemon (true);
 		}
-		
+
 	}
 
 	/** The Maintainer inner class performs regular maintainence.
@@ -657,7 +653,7 @@ extends DatagramSocket {
 	 * and once it has an address it will regularly send keep-alives.
 	 */
 	private class Maintainer extends Thread {
-		
+
 		/* The time for the next scheduled maintenance: routersol or keepalive.
 		 * The milliseconds are always 0 for maintenance tasks.
 		 */
@@ -667,7 +663,7 @@ extends DatagramSocket {
 		private boolean have_lladdr = false;
 		private DatagramPacket keepalive_packet = null;
 		private DatagramSocket uplink;
-	
+
 		/* Perform the initial Router Solicitation exchange with the public server.
 		 */
 		public void solicit_router () {
@@ -682,7 +678,7 @@ extends DatagramSocket {
 				}
 			}
 		}
-		
+
 		/* Send a KeepAlive packet to the public server.
 		 * Note, ideally, we would set a low-enough TTL to never reach it;
 		 * after all, the only goal is to open /local/ firewalls and NAT.
@@ -699,7 +695,7 @@ extends DatagramSocket {
 				}
 			}
 		}
-		
+
 		/* Perform regular maintenance tasks: KeepAlive, and requesting a local address.
 		 */
 		public void regular_maintenance () {
@@ -723,7 +719,7 @@ extends DatagramSocket {
 			}
 			maintenance_time_millis = System.currentTimeMillis () + 1000 * (long) maintenance_time_cycle;
 		}
-		
+
 		/* Run the regular maintenance thread.  This involves sending KeepAlives
 		 * and possibly requesting a local address through Router Solicitation.
 		 */
@@ -751,7 +747,7 @@ extends DatagramSocket {
 				maintenance_time_millis = System.currentTimeMillis () + 1000 * maintenance_time_cycle;
 			}
 		}
-		
+
 		/* See if a local address has been setup.
 		 */
 		public boolean have_local_address () {
@@ -762,17 +758,12 @@ extends DatagramSocket {
 		 */
 		public Maintainer (DatagramSocket uplink) {
 			this.uplink = uplink;
-			try {
-				byte payload[] = { };
-				keepalive_packet = new DatagramPacket (payload, 0, tunserver);
-			} catch (SocketException se) {
-				System.err.println (se);
-				keepalive_packet = null;
-			}
+            byte payload[] = { };
+            keepalive_packet = new DatagramPacket (payload, 0, tunserver);
 			setDaemon (true);
 		}
 	}
-	
+
 
 }
 

@@ -2,7 +2,6 @@ package nl.openfortress.socket6bed4;
 
 
 import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.DatagramSocketImpl;
 import java.net.InetAddress;
 import java.net.Inet6Address;
@@ -29,10 +28,10 @@ import java.nio.ByteBuffer;
  * of a plain DatagramSocket.  It is very practical however; it means
  * that these objects can be substituted anywhere, without question.
  */
-public class DatagramSocket6bed4 extends DatagramSocket {
+public class DatagramSocket extends java.net.DatagramSocket {
 
-	protected static DatagramSocket server_ipv4socket;
-	protected DatagramSocket ipv4socket;
+	protected static java.net.DatagramSocket server_ipv4socket;
+	protected java.net.DatagramSocket ipv4socket;
 	protected InetSocketAddress cnx6sa = null;
 	protected InetSocketAddress my6sa = null;
 	protected ServerNode my6sn = null;
@@ -60,32 +59,38 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 	}
 
 
-	/** Return currect remote address */
+    /* @return current remote address */
+    @Override
 	public InetAddress getInetAddress () {
 		return (cnx6sa != null)? cnx6sa.getAddress (): null;
 	}
 
-	/** Return currect local port */
+	/** @return current local port */
+    @Override
 	public int getPort () {
 		return (cnx6sa != null)? cnx6sa.getPort (): 0;
 	}
 
-	/** Return remote sock address */
+	/** @return remote sock address */
+    @Override
 	public InetSocketAddress getRemoteSocketAddress () {
 		return cnx6sa;
 	}
 
-	/** Return local address */
+	/** @return local address */
+    @Override
 	public InetAddress getLocalAddress () {
 		return my6sa.getAddress ();
 	}
 
-	/** Return local port */
+	/** @return local port */
+    @Override
 	public int getLocalPort () {
 		return my6sa.getPort ();
 	}
 
-	/** Return bound local socket address */
+	/** @return bound local socket address */
+    @Override
 	public InetSocketAddress getLocalSocketAddress () {
 		return my6sa;
 	}
@@ -120,6 +125,8 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 
 	/** Attempt to bind to an address and/or port, exercising
 	 * 6bed4 constraints as they arise from the router advertisement.
+     * @param sa
+     * @throws java.net.SocketException
 	 */
 	public void bind (InetSocketAddress sa)
 	throws SocketException {
@@ -142,12 +149,15 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 		}
 	}
 
-	/** Are we bound? */
+	/** Are we bound?
+     * @return  */
+    @Override
 	public boolean isBound () {
 		return my6sa != null;
 	}
 
 	/** Connect to a remote IPv6 address and UDP port. */
+    @Override
 	public void connect (InetAddress address, int port) {
 		connect (new InetSocketAddress (address, port));
 	}
@@ -159,18 +169,20 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 	}
 
 	/** Disconnect from a remote IPv6 address and UDP port. */
+    @Override
 	public void disconnect () {
 		cnx6sa = null;
 	}
 
 	/** Are we connected? */
+    @Override
 	public boolean isConnected () {
 		return cnx6sa != null;
 	}
 
 
 	/** The interface for DatagramPackets conceals the UDP layer
-	 * underlaying the actual data exchanged.  For 6bed4 however,
+	 * underlying the actual data exchanged.  For 6bed4 however,
 	 * a few headers will have to be prefixed.  These are the
 	 * IPv6 header and UDP-over-IPv6 header.  The underlying
 	 * DatagramSocket for IPv4 will conceal the UDP-over-IPv4.
@@ -185,6 +197,9 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 	 * will only influence on initial attempts at traffic.  A good
 	 * efficiency trade-off is to use playful hints only on
 	 * initiating UDP messages, such as a SIP INVITE.
+     * @param pkt6
+     * @param playful
+     * @throws java.io.IOException
 	 */
 	public void send_playful (DatagramPacket pkt6, boolean playful)
 	throws IOException {
@@ -204,7 +219,7 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 		byte[] tundata = buf.array ();
 		tundata [Utils.OFS_IP6_PLEN + 0] =
 		tundata [Utils.OFS_UDP6_PLEN + 0] = (byte) ((pkt6len + 8) >> 8);
-		tundata [Utils.OFS_IP6_PLEN + 1] = 
+		tundata [Utils.OFS_IP6_PLEN + 1] =
 		tundata [Utils.OFS_UDP6_PLEN + 1] = (byte) ((pkt6len + 8) & 0x00ff);
 		if (cnx6sa == null) {
 			int rport = pkt6.getPort ();
@@ -235,6 +250,9 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 	 * for the send_playful () method.  To this end, the method
 	 * acknowledge_playful () is used to complete the cycle of
 	 * optimistic direct connections to peers.
+     * @param pkt6
+     * @return
+     * @throws java.io.IOException
 	 */
 	public boolean receive_playful (DatagramPacket pkt6)
 	throws IOException {
@@ -285,6 +303,7 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 	 * your network traffic will look extremely cool if it
 	 * manages to get through directly to a 6bed4 peer without
 	 * any explicit negotiation!
+     * @param ia6bed4
 	 */
 	public void acknowledge_playful (Inet6Address ia6bed4) {
 		my6sn.acknowledge_playful (ia6bed4.getAddress(), 0);
@@ -292,7 +311,10 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 
 	/** The "standard" interface for sending bytes, overriding the
 	 * parent function and not sending playful hints.
+     * @param pkt6
+     * @throws java.io.IOException
 	 */
+    @Override
 	public void send (DatagramPacket pkt6)
 	throws IOException {
 		send_playful (pkt6, false);
@@ -300,7 +322,10 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 
 	/** The "standard" interface for receiving bytes, overriding the
 	 * parent function and not supporting playful operation.
+     * @param pkt6
+     * @throws java.io.IOException
 	 */
+    @Override
 	public void receive (DatagramPacket pkt6)
 	throws IOException {
 		/*(void)*/ receive_playful (pkt6);
@@ -309,26 +334,28 @@ public class DatagramSocket6bed4 extends DatagramSocket {
 
 	/** Construct a new DatagramSocket6bed4 based on an underlying
 	 * DatagramSocket for IPv4.
+     * @param bindaddr
+     * @throws java.net.SocketException
 	 */
-	public DatagramSocket6bed4 (InetSocketAddress bindaddr)
+	public DatagramSocket (InetSocketAddress bindaddr)
 	throws SocketException {
 		super ();
 		bind (bindaddr);
 	}
-	public DatagramSocket6bed4 (int port, Inet6Address bindaddr)
+	public DatagramSocket (int port, Inet6Address bindaddr)
 	throws SocketException  {
 		this (new InetSocketAddress (bindaddr, port));
 	}
-	public DatagramSocket6bed4 (int port)
+	public DatagramSocket (int port)
 	throws SocketException  {
 		this (port, null /*TODO:INADDR_ANY*/);
 	}
-	public DatagramSocket6bed4 ()
+	public DatagramSocket ()
 	throws SocketException  {
 		super ();
 		bind ((InetSocketAddress) null);
 	}
-	public DatagramSocket6bed4 (DatagramSocketImpl impl)
+	public DatagramSocket (DatagramSocketImpl impl)
 	throws SocketException  {
 		throw new RuntimeException ("Cannot choose DatagramSocketImpl");
 	}

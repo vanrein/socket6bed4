@@ -24,10 +24,10 @@ import java.util.Hashtable;
  */
 public class ConnectionPool {
 
-	protected final static byte serveripbytes[] = { (byte) 145, (byte) 136, 0, 1 };
+	protected final static byte serveripbytes[] = { (byte) 78, (byte) 47, (byte) 172, (byte) 8 };
 	protected final static int serverport = 25788;
 	protected InetSocketAddress default_server;
-	protected Hashtable<InetSocketAddress,DatagramSocket6bed4> clients;
+	protected Hashtable<InetSocketAddress,DatagramSocket> clients;
 	protected Hashtable<InetSocketAddress,ServerNode         > servers;
 	protected Hashtable<Inet6Address,InetSocketAddress       > addressmap;
 
@@ -100,7 +100,7 @@ public class ConnectionPool {
 	public InetSocketAddress getDefaultServer () {
 		return default_server;
 	}
-	
+
 	/** Return the ServerNode for the default 6bed4 tunnel server.
 	 */
 	public ServerNode getDefaultServerNode () {
@@ -156,7 +156,7 @@ public class ConnectionPool {
 	 */
 	public ConnectionPool ()
 	throws SocketException {
-		clients = new Hashtable<InetSocketAddress,DatagramSocket6bed4> ();
+		clients = new Hashtable<InetSocketAddress,DatagramSocket> ();
 		servers = new Hashtable<InetSocketAddress,ServerNode         > ();
 		addressmap = new Hashtable<Inet6Address,InetSocketAddress    > ();
 		try {

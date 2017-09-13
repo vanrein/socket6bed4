@@ -17,32 +17,32 @@ import java.io.IOException;
 
 /* The Neighbor Cache is modelled in Java, because Android/Java won't
  * give access to the network stack.
- * 
+ *
  * The primary task of the cache is to map IPv6-addresses in byte [16]
  * format to a destination, which is stored as a Inet4SocketAddress
  * for direct use with DatagramPacket facilities in Java.  A hash is
  * used to gain fast access to the target object.
- * 
+ *
  * To find mappings, the cache will send up to 3 Neighor Solicitation
  * messages to the direct peer.  During this period it will pass through
  * states ATTEMPT1 to ATTEMPT3, and finally become FAILED.  This is a sign
  * that no further attempts need to be made until the expiration of the
  * mapping, about 30 seconds after starting it.  This process starts
  * when an unknown peer is approached, or one that is STALE.
- * 
+ *
  * If a Neighbor Advertisement comes in, this information is sent here
  * for processing.  The cache entry will usually go to REACHABLE in such
  * situations.
- * 
+ *
  * When traffic comes in with the direct address of this peer as its
  * destination, then the cache is informed; if no mapping in REACHABLE
  * state exists, then new attempts are started, so as to enable direct
  * connectivity after the remote peer has opened a hole to us.
- * 
+ *
  * The cache maintains a seperate timer queue for each state, and will
  * act upon the objects if they expire.  This makes the queue rather
  * self-controlled.
- * 
+ *
  * Before changing any piece of this code, please assure yourself that
  * you understand each single synchronized section, and convince
  * yourself that you understand the trick in NeighborQueue.dequeue().
@@ -53,7 +53,7 @@ import java.io.IOException;
  */
 
 class NeighborCache {
-	
+
 	/* The states of neighbors in the cache.
 	 */
 	public final static int ATTEMPT1 = 0;		/* Discovery sequence */
@@ -64,8 +64,8 @@ class NeighborCache {
 	public final static int STALE = 5;			/* Not used for up to ~30s */
 	public final static int NUM_NGB_STATES = 6;	/* Count of normal states */
 	public final static int INTRANSIT = 7;		/* Traveling between queues */
-	
-	
+
+
 	/* The timing spent in the various states of a cache entry.  Stable states
 	 * take up several seconds, while waiting for a response is faster.
 	 * Note the remarks at NeighborQueue.dequeue() for an important constraint;
@@ -76,7 +76,7 @@ class NeighborCache {
 	 * this problem does not arise when an object occurs in multiple queues
 	 * at once, because a mismatch with the queue's state means that those
 	 * lingering neighbors are ignored as timeout sources.
-	 * 
+	 *
 	 * TODO: I found that Android can be pretty slow in responding over eth0,
 	 * possibly worse over UMTS or (shiver) GPRS.  So, it may be that the
 	 * following timing must be slowed down, *or* that NgbAdv ought to be
@@ -87,15 +87,15 @@ class NeighborCache {
 			27500,							/* STALE -- 30 additional seconds */
 			30000							/* REACHABLE -- 30 seconds of bliss */
 	};
-	
+
 	/* The timer queues for neighbor discovery, each in its own thread */
 	NeighborQueue queues [];
-	
+
 	/* The neighbor cache contains all elements, regardless of their state.
 	 * This is needed to avoid doing double work.  If a neighbor is considered
 	 * to be available, then it should be in here.  Once it stops being of
 	 * interest (STALE or FAILED expires) it will be removed.
-	 * 
+	 *
 	 * Note that the key and value are both Neighbor objects.  The only part
 	 * of the Neighbor dictating equality (and the hashCode) is the 6-byte
 	 * key holding the remote peer's IPv4 address and UDP port, so it is
@@ -105,28 +105,28 @@ class NeighborCache {
 	 * the procedures of the Neighbor Cache, including the various queues.
 	 */
 	private Hashtable <Integer, Neighbor> neighbor_cache;
-	
-	
+
+
 	/* The public server, used as default return value for queires after
 	 * unsettled neighbor cache entries.
 	 */
 	private InetSocketAddress public_server;
-	
-	
+
+
 	/* The socket used as uplink to the rest of the 6bed4-using World.
 	 */
 	private DatagramSocket uplink;
-	
-	
+
+
 	/* The 6bed4 address as a 16-byte array; may also be used as an 8-byte prefix.
 	 */
 	private byte address_6bed4 [];
-	
+
 	/* The 6bed4 address as a 6-byte key.
 	 */
 	private byte address_6bed4_key [];
-	
-	
+
+
 	/* Construct a neighbor cache with no entries but a lot of structure */
 	public NeighborCache (DatagramSocket ipv4_uplink, InetSocketAddress pubserver, byte link_address_6bed4 []) {
 		uplink = ipv4_uplink;
@@ -141,7 +141,7 @@ class NeighborCache {
 		}
 		neighbor_cache = new Hashtable <Integer,Neighbor> ();
 	}
-	
+
 	/* Destroy a neighbor cache */
 	public void cleanup () {
 		for (int i=0; i < NUM_NGB_STATES; i++) {
@@ -158,14 +158,14 @@ class NeighborCache {
 			neighbor_cache.remove (key);
 		}
 	}
-	
+
 	/* Attempt to retrieve an entry from the neighbor cache.  The resulting
 	 * actions as well as the return value may differ, depending on the
 	 * state of the cache entry.  This function always returns immediately,
 	 * with the tunnel server as a default response for instant connections,
 	 * but the cache may asynchronously attempt to find a direct path to the
 	 * neighbor.
-	 * 
+	 *
 	 * The "playful" argument is rather special.  When set to true, it
 	 * indicates that an initial experiment attempting to contact the
 	 * neighbor directly is acceptable.  This is usually the cae if the
@@ -180,7 +180,7 @@ class NeighborCache {
 	 *  a direct route, this should be reported to the neighbor cache
 	 *  through received_peer_direct_acknowledgement() so it can
 	 *  learn that future traffic can be directly sent to the peer.
-	 *  
+	 *
 	 * A common case for which this holds is TCP connection setup:
 	 *  1. Packets with SYN are sent repeatedly if need be
 	 *  2. Packets with ACK stand out in a crowd
@@ -199,7 +199,7 @@ class NeighborCache {
 	 * an ACK from client to server follows, which asserts to the
 	 * server that it can talk directly (because, at that time, the
 	 * client has picked up on the directly sent SYN+ACK).
-	 * 
+	 *
 	 * It is possible for TCP to initiate a connection from both ends
 	 * at the same time.  Effectively this splits the SYN+ACK into
 	 * two messages, one with SYN and one with ACK.  It may happen
@@ -208,7 +208,7 @@ class NeighborCache {
 	 * playful SYN that does not return an ACK over the direct route
 	 * will establish NAT-passthrough if it is technically possible.
 	 * A similar thing occurs when the initial SYN is lost for some
-	 * reason. 
+	 * reason.
 	 */
 	public InetSocketAddress lookup_neighbor (byte addr [], int addrofs, boolean playful) {
 		if (!is6bed4 (addr, addrofs)) {
@@ -269,14 +269,14 @@ class NeighborCache {
 			return public_server;
 		}
 	}
-	
+
 	/* Send a Neighbor Solicitation to the peer.  When this succeeds at
 	 * penetrating to the remote peer's 6bed4 stack, then a Neighbor
 	 * Advertisement will return, and be reported through the method
 	 * NeighborCache.received_peer_direct_acknowledgement() so the
 	 * cache can update its state, and support direct sending to the
-	 * remote peer.  
-	 * 
+	 * remote peer.
+	 *
 	 * Even though this kind of message may be sent after failed
 	 * playful attempts, it still does not rule out the possibility
 	 * of any such attempts returning, so the "playful" flag for
@@ -322,11 +322,11 @@ class NeighborCache {
 			;
 		}
 	}
-	
+
 	/* The TunnelServer reports having received a neighbor advertisement
 	 * by calling this function.  This may signal the cache that the
 	 * corresponding cache entry needs updating.
-	 * 
+	 *
 	 * The "playful" flag is used to indicate that the acknowledgement
 	 * arrived as part of a playful attempt in lookup_neighbor().  This
 	 * information is used to determine if resends have taken place
@@ -386,19 +386,19 @@ class NeighborCache {
 		}
 	}
 
-	
+
 	/* The Neighbor class represents individual entries in the NeighborCache.
 	 * Each contains an IPv6 address as 16 bytes, its state, and a timeout for
 	 * its current state queue.
-	 * 
+	 *
 	 * Most of this class is storage, and is publicly accessible by the
 	 * other components in this class/file.
-	 * 
+	 *
 	 * Note that the Neighbor class serves in the hashtable as a key and value;
 	 * but as a key, the only input used are the 6 bytes with the remote peer's
 	 * IPv4 address and UDP port.  This means that another object can easily be
 	 * constructed as a search entry, to resolve into the full entry.
-	 * 
+	 *
 	 * TODO: Inner class -- does that mean that the context is copied into this object?  That'd be wasteful!
 	 */
 	static class Neighbor {
@@ -407,7 +407,7 @@ class NeighborCache {
 		protected long timeout;
 		byte key [];
 		boolean playful;
-		
+
 		/* The hashCode for this object depends solely on the key value.
 		 * Integrate all the bits of the key for optimal spreading.  The
 		 * hashCode may only differ if the equals() output below also
@@ -416,13 +416,13 @@ class NeighborCache {
 		public int hashCode () {
 			return key2hash (key);
 		}
-		
+
 		/* The equals output determines that two Neighbor objects are
 		 * the same if their key matches; that is, if their remote
 		 * IPv4 address and UDP port is the same.  It is guaranteed
 		 * that the hashCode is the same for two equal objects; if two
 		 * objects are unequal then their hashCode is *likely* to differ,
-		 * but not guaranteed. 
+		 * but not guaranteed.
 		 */
 		public boolean equals (Object oth) {
 			try {
@@ -437,7 +437,7 @@ class NeighborCache {
 				return false;
 			}
 		}
-		
+
 		/* Construct a new Neighbor based on its 6-byte key */
 		public Neighbor (byte fromkey [], boolean create_playfully) {
 			key = new byte [6];
@@ -449,20 +449,20 @@ class NeighborCache {
 			playful = create_playfully;
 		}
 	}
-	
+
 	/* The NeighborQueue inner class represents a timer queue.  The objects in this
 	 * queue each have their own timeouts, as specified by state_timing_millis.
 	 * New entries are attached to the back, timeouts are picked up at the front.
-	 * 
+	 *
 	 * The queues have understanding of the various states, and how to handle
 	 * expiration.
 	 */
 	class NeighborQueue extends Thread {
-		
+
 		private NeighborCache cache;
 		private int whoami;
 		private Queue <Neighbor> queue;
-		
+
 		public NeighborQueue (NeighborCache owner, int mystate) {
 			cache = owner;
 			whoami = mystate;
@@ -470,7 +470,7 @@ class NeighborCache {
 			setDaemon (true);
 			this.start ();
 		}
-		
+
 		public void run () {
 			while (!isInterrupted ()) {
 				//
@@ -574,7 +574,7 @@ class NeighborCache {
 		public void enqueue (Neighbor ngb) {
 			enqueue (ngb, false);
 		}
-		
+
 		/* Insert a new element into the queue.  If this is the first
 		 * entry, be sure to notify the thread that may be waiting for
 		 * something to chew on.
@@ -630,10 +630,10 @@ class NeighborCache {
 		 * The state and timeout of the neighbor entry will not be modified
 		 * by this call, but future enqueueing may do that nonetheless.
 		 * The function returns success; that is, it tells the caller if
-		 * the object was indeed found in the queue. 
-		 * 
+		 * the object was indeed found in the queue.
+		 *
 		 * *** Implementation note ***
-		 * 
+		 *
 		 * Dequeueing is expensive, as it involves going through the list
 		 * of stored items.  Keeping the structures up to date to speedup
 		 * this operation is hardly more pleasant.  So, we'll use a trick.
@@ -649,7 +649,7 @@ class NeighborCache {
 		 * must be only one thread that receives true when removing an
 		 * item from a queue that holds it.  The loop that removes the
 		 * queue elements from the head also changes to accommodate this
-		 * behaviour.    
+		 * behaviour.
 		 */
 		public boolean dequeue (Neighbor ngb) {
 			boolean wasthere;
@@ -665,35 +665,34 @@ class NeighborCache {
 		}
 	}
 
-	
+
 	/***
 	 *** UTILITIES
 	 ***/
-	
-	
+
+
 	/* Check if an address is a 6bed4 address.
 	 */
 	public boolean is6bed4 (byte addr [], int addrofs) {
 		if (Utils.memdiff_halfaddr (addr, addrofs, address_6bed4, 0)) {
 			return false;
 		}
-		if ((addr [addrofs + 11] != (byte) 0xff) || (addr [addrofs + 12] != (byte) 0xfe)) {
-			return false;
-		}
 		//TODO// Possibly require that the port number is even
 		return true;
 	}
-	
+
 	/* Map an address to a 6-byte key in the provided space.  Assume that the
 	 * address is known to be a 6bed4 address.
 	 */
 	private static void address2key (byte addr [], int addrofs, byte key []) {
-		key [0] = (byte) (addr [addrofs +  8] ^ 0x02);
-		key [1] = addr [addrofs +  9];
-		key [2] = addr [addrofs + 10];
-		key [3] = addr [addrofs + 13];
-		key [4] = addr [addrofs + 14];
-		key [5] = addr [addrofs + 15];
+		// UDP port
+		key [0] = addr [addrofs + 13];
+		key [1] = addr [addrofs + 12];
+		// IPv4 address
+		key [2] = (byte) (addr [addrofs + 8] & 0xfc | (addr [addrofs + 14] & 0xff) >> 6);
+		key [3] = addr [addrofs + 9];
+		key [4] = addr [addrofs + 10];
+		key [5] = addr [addrofs + 11];
 	}
 
 	/* Map an InetSocketAddress to a 6-byte key in the provided space.
@@ -715,14 +714,14 @@ class NeighborCache {
 		for (int i=0; i<8; i++) {
 			addr [addrofs + i] = address_6bed4 [i];
 		}
-		addr [addrofs +  8] = (byte) (key [0] ^ 0x02);
-		addr [addrofs +  9] = key [1];
-		addr [addrofs + 10] = key [2];
-		addr [addrofs + 11] = (byte) 0xff;
-		addr [addrofs + 12] = (byte) 0xfe;
-		addr [addrofs + 13] = key [3];
-		addr [addrofs + 14] = key [4];
-		addr [addrofs + 15] = key [5];
+		addr [addrofs +  8] = (byte) (key [2] & 0xfc);
+		addr [addrofs +  9] = key [3];
+		addr [addrofs + 10] = key [4];
+		addr [addrofs + 11] = key [5];
+		addr [addrofs + 12] = key [1];
+		addr [addrofs + 13] = key [0];
+		addr [addrofs + 14] = (byte) ((key [2] & 0xff) << 6);
+		addr [addrofs + 15] = 1;
 	}
 
 	/* Map a key to an InetSocketAddress.
@@ -737,12 +736,12 @@ class NeighborCache {
 		v4addr [3] = key [5];
 		try {
 			Inet4Address remote = (Inet4Address) Inet4Address.getByAddress (v4addr);
-			return new InetSocketAddress (remote, port);						
+			return new InetSocketAddress (remote, port);
 		} catch (UnknownHostException uhe) {
 			throw new RuntimeException ("Internet Error", uhe);
 		}
 	}
-	
+
 	private static int key2hash (byte key []) {
 		int retval;
 		retval = key [0] ^ key [3];
