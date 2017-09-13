@@ -24,10 +24,10 @@ public class Test6bed4 {
 
     public Test6bed4() {
         try {
-            dgs = new DatagramSocket(10000);
-            Inet4Address mansoft = (Inet4Address) InetAddress.getByName("ipv4.mansoft.nl");
-            int port = 25788;
-            dgs.setDefaultServer(mansoft, port);
+            dgs = new DatagramSocket();
+            //Inet4Address mansoft = (Inet4Address) InetAddress.getByName("ipv4.mansoft.nl");
+            //int port = 25788;
+            //dgs.setDefaultServer(mansoft, port);
             InetAddress localhost = Inet6bed4Address.getLocalHost();
             System.out.println(localhost);
         } catch (SocketException ex) {
