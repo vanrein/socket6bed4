@@ -7,6 +7,7 @@ package nl.openfortress.socket6bed4;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
+import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -16,7 +17,9 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  *
  * @author hfman
@@ -24,7 +27,9 @@ import java.util.Arrays;
 public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
 	static final byte prephdr_payload [] = { 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, Utils.IPPROTO_UDP, 64 /*HopLimit*/ };
     protected int ephemeral = 3210;
-
+    private java.net.DatagramSocket standardSocket;
+    private Thread standardThread;
+    private ConcurrentLinkedQueue<Thread> blockingThreads;
     /**
      * The DatagramSocket or MulticastSocket
      * that owns this impl
@@ -37,6 +42,16 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
 
     @Override
     protected void create() throws SocketException {
+        blockingThreads = new ConcurrentLinkedQueue<Thread>();
+    }
+
+    private void createStandardSocket() {
+        try {
+            standardSocket = new java.net.DatagramSocket(socket.getLocalPort());
+            System.err.println(standardSocket.getLocalSocketAddress());
+        } catch (SocketException ex) {
+            Logger.getLogger(DatagramSocketImpl.class.getName()).log(Level.SEVERE, "Could not create standard socket", ex);
+        }
     }
 
     private void bind(int lport)  throws SocketException {
@@ -78,6 +93,7 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
 		} else {
             bind(lport);
         }
+        createStandardSocket();
     }
 
 	/** The interface for DatagramPackets conceals the UDP layer
@@ -136,12 +152,16 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
 
 	/** The "standard" interface for sending bytes, overriding the
 	 * parent function and not sending playful hints.
-     * @param pkt6
+     * @param p
      * @throws java.io.IOException
 	 */
     @Override
-    protected void send(DatagramPacket pkt6) throws IOException {
-        send_playful(pkt6, false);
+    protected void send(DatagramPacket p) throws IOException {
+        if (p.getAddress() instanceof Inet4Address) {
+            standardSocket.send(p);
+        } else {
+            send_playful(p, false);
+        }
     }
 
 	/** Receive a packet from the underlying IPv4 layer.  As with
@@ -186,6 +206,20 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
 		return false;
 	}
 
+    private void joinStandardThread() {
+        if (standardThread == null) {
+            System.err.println("Standard thread not active");
+        } else {
+            System.err.println("Joining standard thread");
+            try {
+                standardThread.join();
+                System.err.println("Standard thread joined");
+            } catch (InterruptedException ex) {
+                Logger.getLogger(DatagramSocketImpl.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            standardThread = null;
+        }
+    }
 	/** The "standard" interface for receiving bytes, overriding the
 	 * parent function and not supporting playful operation.
      * @param pkt6
@@ -193,7 +227,46 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
 	 */
     @Override
     protected void receive(DatagramPacket pkt6) throws IOException {
-        /*(void)*/ receive_playful (pkt6);
+        final DatagramPacket pkt = pkt6;
+        final byte[] pkt4buf = new byte[pkt.getLength()];
+        final DatagramPacket pkt4 = new DatagramPacket(pkt4buf, pkt4buf.length);
+        System.err.println("pkt4buf.length = " + pkt4buf.length);
+        final Thread thread6bed4 = Thread.currentThread();
+        standardThread = new Thread() {
+            @Override
+            public void run() {
+                System.err.println("Standard thread starting: " + Thread.currentThread().getName());
+                try {
+                    System.err.println("Standard thread receiving");
+                    standardSocket.receive(pkt4);
+                    System.err.println("Standard thread received packet: " + new String(pkt4.getData(), 0, pkt4.getLength()));
+                    thread6bed4.interrupt();
+                } catch (IOException ex) {
+                    Logger.getLogger(DatagramSocketImpl.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                System.err.println("Standard thread exiting");
+            }
+        };
+        standardThread.start();
+
+        blockingThreads.add(thread6bed4);
+        try {
+            /*(void)*/ receive_playful (pkt6);
+        } catch (SocketTimeoutException ste) {
+            int port4 = pkt4.getPort();
+            if (port4 != -1) {
+                pkt6.setAddress (pkt4.getAddress());
+                pkt6.setPort (port4);
+                pkt6.setData(pkt4.getData(), 0, pkt4.getLength());
+                joinStandardThread();
+            }
+        }
+        blockingThreads.remove(thread6bed4);
+        if (standardThread != null) {
+            standardSocket.close();
+            joinStandardThread();
+            createStandardSocket();
+        }
     }
 
 
@@ -250,7 +323,11 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
     @Override
     protected void close() {
         System.err.println("CLOSE()");
-        throw new UnsupportedOperationException("Not supported yet3333."); //To change body of generated methods, choose Tools | Templates.
+        for (Thread t : blockingThreads) {
+            t.interrupt();
+        }
+        standardSocket.close();
+        joinStandardThread();
     }
 
     public void setOption(int optID, Object value) throws SocketException {
