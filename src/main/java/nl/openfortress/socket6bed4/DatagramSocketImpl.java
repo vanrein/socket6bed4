@@ -16,7 +16,6 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -177,10 +176,10 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
 	 */
     @Override
     protected void send(DatagramPacket p) throws IOException {
-        if (p.getAddress() instanceof Inet4Address) {
-            standardSocket.send(p);
-        } else {
+        if (Inet6bed4Address.is6bed4Address(p.getAddress().getAddress())) {
             send_playful(p, false);
+        } else {
+            standardSocket.send(p);
         }
     }
 
@@ -211,6 +210,7 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
 		pkt6.setAddress (msg.getAddress());
 		pkt6.setPort (msg.getPort());
 		pkt6.setData (msg.getData());
+        pkt6.setLength(msg.getLength());
 		return false;
 	}
 

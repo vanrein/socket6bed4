@@ -11,12 +11,12 @@ import java.net.UnknownHostException;
  * a few calls similar to those in Inet*Address that are also
  * available here; however, an address created here will be an
  * Inet6Address.
- *  
+ *
  *  [1] Inet6Address is a final class, and InetAddress has no
  *      constructors to call.  Nasty.
  */
 public final class Inet6bed4Address {
-	
+
 	/** Returns the shared 6bed4 address for this host.
 	 * Note that a 6bed4 address is available on any host that
 	 * has an IPv4 address and supports IPv6.  This is also the
@@ -61,7 +61,15 @@ public final class Inet6bed4Address {
 			return false;
 		}
 		//TODO// Take local 6bed4 serverpool into account
-		return (addr [0] == 0x20) && (addr [1] == 0x01) && (addr [2] == 0x06) && (addr [3] == 0x7c) && (addr [4] == 0x12) && (addr [5] == 0x7c);
+		return
+            (addr [0] & 0xff) == 0x2a &&
+            (addr [1] & 0xff) == 0x01 &&
+            (addr [2] & 0xff) == 0x04 &&
+            (addr [3] & 0xff) == 0xf8 &&
+            (addr [4] & 0xff) == 0x0d &&
+            (addr [5] & 0xff) == 0x12 &&
+            (addr [6] & 0xff) == 0x1c &&
+            (addr [7] & 0xff) == 0xc1;
 	}
 
 	/** Return an Inet6bed4Address based on a byte string.
@@ -87,6 +95,6 @@ public final class Inet6bed4Address {
 	private Inet6bed4Address () {
 		;
 	}
-	
+
 }
 
