@@ -93,7 +93,27 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
 		} else {
             bind(lport);
         }
+        final int boundPort = socket.getLocalPort();
         createStandardSocket();
+        standardThread = new Thread() {
+            @Override
+            public void run() {
+                System.err.println("Standard thread starting: " + Thread.currentThread().getName());
+                try {
+                    for (;;) {
+                        DatagramPacket dgram4 = new DatagramPacket (new byte [1280 + 28], 1280 + 28);
+                        standardSocket.receive(dgram4);
+                        System.err.println("Standard thread received packet: " + new String(dgram4.getData(), 0, dgram4.getLength()));
+                        socket.my6sn.udp_clients[boundPort].offer(dgram4);
+                    }
+                } catch (IOException ex) {
+                    Logger.getLogger(DatagramSocketImpl.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                System.err.println("Standard thread exiting");
+            }
+        };
+        standardThread.start();
+
     }
 
 	/** The interface for DatagramPackets conceals the UDP layer
@@ -184,25 +204,13 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
 	 */
 	public boolean receive_playful (DatagramPacket pkt6)
 	throws IOException {
-		byte msg[] = socket.my6sn.receive_datagram (socket.my6sa.getPort (), socket.getSoTimeout ());
+		DatagramPacket msg = socket.my6sn.receive_datagram (socket.my6sa.getPort (), socket.getSoTimeout ());
 		if (msg == null) {
 			throw new SocketTimeoutException ("No data available within timeout");
 		}
-		int len = Utils.fetch_net16 (msg, Utils.OFS_IP6_PLEN) + Utils.OFS_IP6_PLOAD;
-		if (len < Utils.OFS_UDP6_PLOAD) {
-			throw new IOException ("Datagram packet with silly short size received over 6bed4 tunnel");
-		}
-		if (Utils.checksum_udpv6 (msg, 0) != Utils.fetch_net16 (msg, Utils.OFS_UDP6_CSUM)) {
-			throw new IOException ("Datagram packet with faulty checksum received over 6bed4 tunnel");
-		}
-		if (Utils.fetch_net16 (msg, Utils.OFS_UDP6_PLEN) + Utils.OFS_IP6_PLOAD > len) {
-			throw new IOException ("Incomplete datagram received over 6bed4 tunnel");
-		}
-		pkt6.setAddress ((Inet6Address) InetAddress.getByAddress (Arrays.copyOfRange (msg, Utils.OFS_IP6_SRC, Utils.OFS_IP6_SRC + 16)));
-		pkt6.setPort (Utils.fetch_net16 (msg, Utils.OFS_UDP6_SRCPORT));
-		// PROBABLY FORMALLY CORRECT, BUT NOT HOW PEOPLE USE IT: pkt6.setData (msg, Utils.OFS_UDP6_PLOAD, len);
-		pkt6.setData (Arrays.copyOfRange (msg, Utils.OFS_UDP6_PLOAD, Utils.OFS_UDP6_PLOAD + len - 48), 0, len - 48);
-		//TODO// return ! pkt4.getAddress ().equals (ipv4socket.getInetAddress ());
+		pkt6.setAddress (msg.getAddress());
+		pkt6.setPort (msg.getPort());
+		pkt6.setData (msg.getData());
 		return false;
 	}
 
@@ -227,46 +235,11 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
 	 */
     @Override
     protected void receive(DatagramPacket pkt6) throws IOException {
-        final DatagramPacket pkt = pkt6;
-        final byte[] pkt4buf = new byte[pkt.getLength()];
-        final DatagramPacket pkt4 = new DatagramPacket(pkt4buf, pkt4buf.length);
-        System.err.println("pkt4buf.length = " + pkt4buf.length);
         final Thread thread6bed4 = Thread.currentThread();
-        standardThread = new Thread() {
-            @Override
-            public void run() {
-                System.err.println("Standard thread starting: " + Thread.currentThread().getName());
-                try {
-                    System.err.println("Standard thread receiving");
-                    standardSocket.receive(pkt4);
-                    System.err.println("Standard thread received packet: " + new String(pkt4.getData(), 0, pkt4.getLength()));
-                    thread6bed4.interrupt();
-                } catch (IOException ex) {
-                    Logger.getLogger(DatagramSocketImpl.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                System.err.println("Standard thread exiting");
-            }
-        };
-        standardThread.start();
 
         blockingThreads.add(thread6bed4);
-        try {
-            /*(void)*/ receive_playful (pkt6);
-        } catch (SocketTimeoutException ste) {
-            int port4 = pkt4.getPort();
-            if (port4 != -1) {
-                pkt6.setAddress (pkt4.getAddress());
-                pkt6.setPort (port4);
-                pkt6.setData(pkt4.getData(), 0, pkt4.getLength());
-                joinStandardThread();
-            }
-        }
+        /*(void)*/ receive_playful (pkt6);
         blockingThreads.remove(thread6bed4);
-        if (standardThread != null) {
-            standardSocket.close();
-            joinStandardThread();
-            createStandardSocket();
-        }
     }
 
 
@@ -326,8 +299,16 @@ public class DatagramSocketImpl extends java.net.DatagramSocketImpl{
         for (Thread t : blockingThreads) {
             t.interrupt();
         }
-        standardSocket.close();
-        joinStandardThread();
+        try {
+            socket.my6sn.unregisterDatagramClient (socket.my6sa.getPort ());
+        } catch (SocketException ex) {
+            Logger.getLogger(DatagramSocketImpl.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        if (standardSocket != null) {
+            standardSocket.close();
+            standardSocket = null;
+            joinStandardThread();
+        }
     }
 
     public void setOption(int optID, Object value) throws SocketException {

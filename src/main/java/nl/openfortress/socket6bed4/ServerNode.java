@@ -9,6 +9,7 @@ import java.net.InetAddress;
 import java.net.Inet6Address;
 import java.net.SocketException;
 import java.io.IOException;
+import java.util.Arrays;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -38,7 +39,7 @@ extends DatagramSocket {
 	protected Inet6Address sharedAddress;
 	private Maintainer maintainer;
 	private Worker worker;
-	private BlockingQueue<byte[]> udp_clients [];
+	BlockingQueue<DatagramPacket> udp_clients [];
 	static byte local_address [] = new byte [16];
 
 	/** Create a connection to a 6bed4 tunnel server, and keep it active.
@@ -114,7 +115,7 @@ extends DatagramSocket {
 			if (udp_clients [port] != null) {
 				throw new SocketException ("port taken");
 			}
-			udp_clients [port] = new ArrayBlockingQueue<byte[]> (10);
+			udp_clients [port] = new ArrayBlockingQueue<DatagramPacket> (10);
 		}
 	}
 
@@ -176,7 +177,7 @@ extends DatagramSocket {
 	 * The timeout value is in milli-seconds, zero
 	 * representing infinity (just as with setSoTimeout).
 	 */
-	public byte[] receive_datagram (int port, int timeout)
+	public DatagramPacket receive_datagram (int port, int timeout)
 	throws SocketException {
 		if (udp_clients [port] == null) {
 			throw new SocketException ("port is not allocated");
@@ -382,6 +383,26 @@ extends DatagramSocket {
 		}
 	}
 
+    private DatagramPacket createDatagramPacket(byte pkt []) throws IOException {
+		int len = Utils.fetch_net16 (pkt, Utils.OFS_IP6_PLEN) + Utils.OFS_IP6_PLOAD;
+		if (len < Utils.OFS_UDP6_PLOAD) {
+			throw new IOException ("Datagram packet with silly short size received over 6bed4 tunnel");
+		}
+		if (Utils.checksum_udpv6 (pkt, 0) != Utils.fetch_net16 (pkt, Utils.OFS_UDP6_CSUM)) {
+			throw new IOException ("Datagram packet with faulty checksum received over 6bed4 tunnel");
+		}
+		if (Utils.fetch_net16 (pkt, Utils.OFS_UDP6_PLEN) + Utils.OFS_IP6_PLOAD > len) {
+			throw new IOException ("Incomplete datagram received over 6bed4 tunnel");
+		}
+        DatagramPacket pkt6 = new DatagramPacket(
+            Arrays.copyOfRange (pkt, Utils.OFS_UDP6_PLOAD, Utils.OFS_UDP6_PLOAD + len - 48),
+            len - 48,
+            (Inet6Address) InetAddress.getByAddress (Arrays.copyOfRange (pkt, Utils.OFS_IP6_SRC, Utils.OFS_IP6_SRC + 16)),
+            Utils.fetch_net16 (pkt, Utils.OFS_UDP6_SRCPORT)
+        );
+        return pkt6;
+    }
+
 	/* Forward an IPv6 packet, wrapped into UDP and IPv4 in the 6bed4
 	 * way, as a pure IPv6 packet over the tunnel interface.  This is
 	 * normally a simple copying operation.  One exception exists for
@@ -416,13 +437,13 @@ extends DatagramSocket {
 		// Check if the designated queue for this packet exists
 		int port = Utils.fetch_net16 (pkt, Utils.OFS_UDP6_DSTPORT);
 		//TODO// Handling for udp_clients: only for UDP-over-IPv6, only to the default address
-		BlockingQueue queue = udp_clients [port];
-		if (queue == null) {
+		BlockingQueue<DatagramPacket> udp_client = udp_clients [port];
+		if (udp_client == null) {
 			return;
 		}
 		// The buffer is already full -- drop the oldest element
-		if (queue.remainingCapacity () == 0) {
-			/* (void) */ queue.poll ();
+		if (udp_client.remainingCapacity () == 0) {
+			/* (void) */ udp_client.poll ();
 		}
 		//
 		// If this is a successful peering attempt, that is, a tcpack packet, report that back
@@ -436,7 +457,7 @@ extends DatagramSocket {
 		//
 		// Enqueue the packet in the designated client queue
 		//TODO// Select whether this is UDP/TCP/??? for the shared address, or raw for unique addresses!
-		queue.offer (pkt);
+		udp_client.offer (createDatagramPacket(pkt));
 	}
 
 	/** Handle a 6bed4 packet that is being stripped and passed on as
