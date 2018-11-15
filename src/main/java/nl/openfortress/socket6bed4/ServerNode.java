@@ -41,6 +41,7 @@ extends DatagramSocket {
 	private Worker worker;
 	BlockingQueue<DatagramPacket> udp_clients [];
 	static byte local_address [] = new byte [16];
+	final static int PREFIX_SIZE = 114;
 
 	/** Create a connection to a 6bed4 tunnel server, and keep it active.
 	 */
@@ -248,8 +249,11 @@ extends DatagramSocket {
 				return;
 			}
 			if (Utils.memdiff_halfaddr (pkt, Utils.OFS_IP6_DST, Utils.router_linklocal_address, 0)) {
-				// Receiver address is not 0xfe80::/64
-				return;
+				// Receiver address is not 0xfe80::/64 ...
+                if (Utils.memdiff_addr (pkt, Utils.OFS_IP6_DST, Utils.allnodes_linklocal_address, 0)) {
+    				// ... and not 0xff02::1/128
+                    return;
+                }
 			}
 			//TODO// Check if offered address looks like a multicast-address (MAC byte 0 is odd)
 			//TODO// Check Secure ND on incoming Router Advertisement?
@@ -270,7 +274,7 @@ extends DatagramSocket {
 					return;   /* out of packet length */
 				} else if ((pkt [rdofs + 3] & (byte) 0xc0) != (byte) 0xc0) {
 					/* no on-link autoconfig prefix */
-				} else if (pkt [rdofs + 2] != 64) {
+				} else if (pkt [rdofs + 2] != PREFIX_SIZE) {
 					return;
 				} else {
 					destprefix_ofs = rdofs + 16;
@@ -278,10 +282,21 @@ extends DatagramSocket {
 				rdofs += (pkt [rdofs + 1] << 3);
 			}
 			if (destprefix_ofs > 0) {
-				for (int i=0; i<8; i++) {
-					local_address [0 + i] = pkt [destprefix_ofs + i];
-					local_address [8 + i] = pkt [Utils.OFS_IP6_DST + 8 + i];
-				}
+                int prefixBits = PREFIX_SIZE;
+                int i;
+                for (i = 0; prefixBits >= 8; i++) {
+                    local_address [i] = pkt [destprefix_ofs + i];
+                    prefixBits -= 8;
+                }
+                if (prefixBits > 0) {
+                    int mask = (1 << (8 - prefixBits)) - 1;
+                    local_address [i] = (byte) ((pkt [destprefix_ofs + i] & ~mask) | (pkt [Utils.OFS_IP6_DST + i] & mask));
+                    i++;
+                }
+                while (i < 16) {
+                    local_address [i] = pkt [Utils.OFS_IP6_DST + i];
+                    i++;
+                }
 				sharedAddress = (Inet6Address) InetAddress.getByAddress (local_address);
 				//TODO// syslog (LOG_INFO, "%s: Assigning address %s to tunnel\n", program, v6prefix);
 				// update_local_netconfig ();

@@ -23,13 +23,12 @@ import java.util.Hashtable;
  * The sender information is stored in a Datagrampacket's SocketAddress.
  */
 public class ConnectionPool {
-
-	protected final static byte serveripbytes[] = { (byte) 78, (byte) 47, (byte) 172, (byte) 8 };
-	protected final static int serverport = 25788;
+	protected final static byte serveripbytes[] = { (byte) 145, (byte) 136, (byte) 0, (byte) 1 };
+	protected final static int serverport = 25790;
 	protected InetSocketAddress default_server;
 	protected Hashtable<InetSocketAddress,DatagramSocket> clients;
-	protected Hashtable<InetSocketAddress,ServerNode         > servers;
-	protected Hashtable<Inet6Address,InetSocketAddress       > addressmap;
+	protected Hashtable<InetSocketAddress,ServerNode> servers;
+	protected Hashtable<Inet6Address,InetSocketAddress> addressmap;
 
 
 	/** The connection pool is normally a shared resource,

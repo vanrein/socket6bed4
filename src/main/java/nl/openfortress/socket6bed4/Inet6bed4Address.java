@@ -66,10 +66,10 @@ public final class Inet6bed4Address {
             (addr [1] & 0xff) == 0x01 &&
             (addr [2] & 0xff) == 0x04 &&
             (addr [3] & 0xff) == 0xf8 &&
-            (addr [4] & 0xff) == 0x0d &&
-            (addr [5] & 0xff) == 0x12 &&
-            (addr [6] & 0xff) == 0x1c &&
-            (addr [7] & 0xff) == 0xc1;
+            (addr [4] & 0xff) == 0x1c &&
+            (addr [5] & 0xff) == 0x1c &&
+            (addr [6] & 0xff) == 0x1a &&
+            (addr [7] & 0xff) == 0x30;
 	}
 
 	/** Return an Inet6bed4Address based on a byte string.

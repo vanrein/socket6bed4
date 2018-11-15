@@ -71,21 +71,15 @@ public class DatagramSocket extends java.net.DatagramSocket {
 	}
 
 	/** @return local address */
-    @Override
-	public InetAddress getLocalAddress () {
-		return my6sa.getAddress ();
-	}
+    //@Override
+	//public InetAddress getLocalAddress () {
+	//	return my6sa.getAddress ();
+	//}
 
 	/** @return local port */
     @Override
 	public int getLocalPort () {
 		return my6sa.getPort ();
-	}
-
-	/** @return bound local socket address */
-    @Override
-	public InetSocketAddress getLocalSocketAddress () {
-		return my6sa;
 	}
 
 	/** Are we bound?

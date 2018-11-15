@@ -6,7 +6,7 @@ class Utils {
 	final static byte IPPROTO_ICMPV6 = 58;
 	final static byte IPPROTO_UDP = 17;
 	final static byte IPPROTO_TCP = 6;
-	
+
 	final static byte ND_ROUTER_SOLICIT   = (byte) 133;
 	final static byte ND_ROUTER_ADVERT    = (byte) 134;
 	final static byte ND_NEIGHBOR_SOLICIT = (byte) 135;
@@ -14,35 +14,35 @@ class Utils {
 	final static byte ND_REDIRECT         = (byte) 137;
 	final static byte ND_LOWEST           = (byte) 133;
 	final static byte ND_HIGHEST          = (byte) 137;
-	
+
 	final static byte ND_OPT_PREFIX_INFORMATION = 3;
-	
+
 	final static int OFS_IP6_SRC        = 8;
 	final static int OFS_IP6_DST        = 24;
 	final static int OFS_IP6_PLEN       = 4;
 	final static int OFS_IP6_NXTHDR		= 6;
 	final static int OFS_IP6_HOPS		= 7;
 	final static int OFS_IP6_PLOAD		= 40;
-	
+
 	final static int OFS_UDP6_SRCPORT	= 40 + 0;
 	final static int OFS_UDP6_DSTPORT	= 40 + 2;
 	final static int OFS_UDP6_CSUM      = 40 + 6;
 	final static int OFS_UDP6_PLEN		= 40 + 4;
 	final static int OFS_UDP6_PLOAD		= 40 + 8;
-	
+
 	final static int OFS_ICMP6_TYPE		= 40 + 0;
 	final static int OFS_ICMP6_CODE		= 40 + 1;
 	final static int OFS_ICMP6_CSUM		= 40 + 2;
 	final static int OFS_ICMP6_DATA		= 40 + 4;
-	
+
 	final static int OFS_ICMP6_NGBSOL_TARGET = 40 + 8;
 	final static int OFS_ICMP6_NGBADV_TARGET = 40 + 8;
 	final static int OFS_ICMP6_NGBADV_FLAGS  = 40 + 4;
-		
+
 	final static int OFS_TCP6_FLAGS	    = 13;
 	final static int TCP_FLAG_SYN		= 0x02;
 	final static int TCP_FLAG_ACK		= 0x01;
-	
+
 	final static byte router_solicitation [] = {
 		// IPv6 header
 		0x60, 0x00, 0x00, 0x00,
@@ -58,6 +58,7 @@ class Utils {
 	};
 
 	final static byte router_linklocal_address [] = { (byte)0xfe,(byte)0x80,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 };
+	final static byte allnodes_linklocal_address [] = { (byte)0xff,(byte)0x02,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,1 };
 
 	/* Retrieve an unsigned 16-bit value from a given index in a byte array and
 	 * return it as an integer.
@@ -67,7 +68,7 @@ class Utils {
 		retval = retval + (((int) pkt [ofs16+1]) & 0xff);
 		return retval;
 	}
-	
+
 	/* Calculate the ICMPv6 checksum field in a given IPv6 packet.
 	 */
 	public static int checksum_icmpv6 (byte pkt []) {
@@ -117,13 +118,13 @@ class Utils {
 		csum = csum ^ 0xffff;	// 1's complement limited to 16 bits
 		return csum;
 	}
-	
+
 	public static void memcp_address (byte tgt [], int tgtofs, byte src [], int srcofs) {
 		for (int i=0; i<16; i++) {
 			tgt [tgtofs+i] = src [srcofs+i];
 		}
 	}
-	
+
 	public static boolean memdiff_addr (byte one[], int oneofs, byte oth[], int othofs) {
 		for (int i=0; i<16; i++) {
 			if (one [oneofs + i] != oth [othofs + i]) {
@@ -132,7 +133,7 @@ class Utils {
 		}
 		return false;
 	}
-	
+
 	public static boolean memdiff_halfaddr (byte one[], int oneofs, byte oth[], int othofs) {
 		for (int i=0; i<8; i++) {
 			if (one [oneofs + i] != oth [othofs + i]) {

@@ -25,9 +25,6 @@ public class Test6bed4 {
     public Test6bed4() {
         try {
             dgs = new DatagramSocket();
-            //Inet4Address mansoft = (Inet4Address) InetAddress.getByName("ipv4.mansoft.nl");
-            //int port = 25788;
-            //dgs.setDefaultServer(mansoft, port);
             InetAddress localhost = Inet6bed4Address.getLocalHost();
             System.out.println(localhost);
         } catch (SocketException ex) {
@@ -43,7 +40,7 @@ public class Test6bed4 {
         byte buf[] = msg.getBytes(Charset.forName("UTF-8"));
         try {
             DatagramPacket packet =
-                    new DatagramPacket(buf, buf.length, InetAddress.getByName("2a01:4f8:d12:1cc1::2"), 12345);
+                    new DatagramPacket(buf, buf.length, InetAddress.getByName("2a01:4f8:1c1c:1a30::1"), 12345);
             dgs.send(packet);
         } catch (UnknownHostException ex) {
             Logger.getLogger(Test6bed4.class.getName()).log(Level.SEVERE, null, ex);
